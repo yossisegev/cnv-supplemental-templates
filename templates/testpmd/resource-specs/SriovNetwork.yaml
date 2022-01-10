@@ -1,11 +1,12 @@
 apiVersion: sriovnetwork.openshift.io/v1
 kind: SriovNetwork
 metadata:
+  annotations:
+    operator.sriovnetwork.openshift.io/last-network-namespace: sriov-dpdk-ns
   name: sriov-test-network
   namespace: openshift-sriov-network-operator
 spec:
-  ipam: '{}
-
-    '
-  networkNamespace: sriov-test-sriov
+  ipam: |
+    {}
+  networkNamespace: sriov-dpdk-ns
   resourceName: sriov_net

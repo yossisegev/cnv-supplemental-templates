@@ -1,0 +1,102 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: dpdk-vm-template
+objects:
+- apiVersion: kubevirt.io/v1
+  kind: VirtualMachine
+  metadata:
+    finalizers:
+    - k8s.v1.cni.cncf.io/kubeMacPool
+    generation: 5
+    labels:
+      kubevirt.io/vm: ${VM_NAME}
+    name: ${VM_NAME}
+    namespace: sriov-dpdk-ns
+  spec:
+    running: true
+    template:
+      metadata:
+        labels:
+          kubevirt.io/domain: ${VM_NAME}
+          kubevirt.io/vm: ${VM_NAME}
+      spec:
+        domain:
+          cpu:
+            cores: ${{NUM_OF_CORES}}
+          devices:
+            disks:
+            - disk:
+                bus: virtio
+              name: containerdisk
+            - disk:
+                bus: virtio
+              name: cloudinitdisk
+            interfaces:
+            - masquerade: {}
+              name: default
+              macAddress: ${PRIMARY_MAC}
+            - macAddress: ${SECONDARY_MAC}
+              name: sriov-test-network
+              sriov: {}
+            rng: {}
+          machine:
+            type: pc-q35-rhel8.4.0
+          resources:
+            requests:
+              memory: 4Gi
+        networks:
+        - name: default
+          pod: {}
+        - multus:
+            networkName: sriov-test-network
+          name: sriov-test-network
+        nodeSelector:
+          kubernetes.io/hostname: ${HOSTING_WORKER}
+        terminationGracePeriodSeconds: 30
+        volumes:
+        - containerDisk:
+            image: ${IMAGE_URL}
+          name: containerdisk
+        - cloudInitNoCloud:
+            networkData: |
+              ethernets:
+                '1':
+                  addresses:
+                  - ${SECONDARY_IP}
+                  match:
+                    macaddress: ${SECONDARY_MAC}
+                  set-name: sriov1
+              version: 2
+            userData: |-
+              #cloud-config
+              chpasswd:
+                expire: false
+              password: password
+              runcmd:
+              - 'sudo sysctl net.ipv4.conf.all.rp_filter=2'
+              - 'sudo sysctl net.ipv4.conf.all.accept_local=1'
+              - 'sudo systemctl daemon-reload '
+          name: cloudinitdisk
+parameters:
+- description: VM name
+  name: VM_NAME
+  value: sriov-vm1
+- description: Image URL 
+  name: IMAGE_URL
+  value: quay.io/openshift-cnv/qe-cnv-tests-rhel:8.4-dpdk
+- description: Number of cores (CPUs)
+  name: NUM_OF_CORES
+  value: "2"
+- description: Primary interface MAC address
+  name: PRIMARY_MAC
+  value: 02:97:a2:00:00:c1
+- description: SR-IOV interface MAC address
+  name: SECONDARY_MAC
+  value: 02:4a:39:00:00:01
+- description: SR-IOV interface IP address
+  name: SECONDARY_IP
+  value: 10.200.1.1/24
+- description: Hostng worker to be used as node-selector
+  name: HOSTING_WORKER
+  value: cnvqe-10.lab.eng.tlv2.redhat.com

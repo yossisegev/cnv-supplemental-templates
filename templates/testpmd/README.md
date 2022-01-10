@@ -70,11 +70,17 @@ podman image rm <image ID>
 
 
 ## Needed SR-IOV Openshift sources for the cluster
+Create new working namespace `sriov-dpdk-ns`
+
+```bash
+oc create ns sriov-dpdk-ns
+oc project sriov-dpdk-ns
+```
 If not yet applied - you should apply the SR-IOV network resources:
 ```bash
-oc apply -f SriovNetworkNodePolicy.yaml
+oc process -f SriovNetworkNodePolicy-template.yaml | oc apply -f -
 ```
-Few values that need to be set in the policy resource:
+This policy resource is a template, so you might need to set some of its parameters, e.g.:
 1. pfNames: Change according to the name of the PF interface on the hosting node.
 2. rootDevices address: The device address of the PF can be retrieved by running
 ```bash
@@ -89,9 +95,10 @@ oc apply -f SriovNetwork.yaml
 ```
 An example of the VM that can be created based on the above configurations is in this repo:
 ```bash
-oc apply -f sriov-vm1.yaml
+oc process -f sriov-vm-template.yaml | oc apply -f -
 ```
-Note that `containerDisk` value should be replaced with the actual repo where the base image is located.
+Like the SriovNetworkNodePolicy resource, this is also a template, so you might need to set some of its parameters,
+e.g. replacing the value of `containerDisk.image` with the actual repo where the base image is located.
 
 
 ## Extra steps on the running VM
@@ -110,7 +117,7 @@ The steps run by this script are as follows:
 driver: iavf
 ...
 ```
-The driver is indeed not vfio-pic, therefore it should be replaced.
+The driver is indeed not vfio-pci, therefore it should be replaced.
 1. Deactivate the NIC to be bound to DPDK.
 ```bash
 ip link set down dev sriov1

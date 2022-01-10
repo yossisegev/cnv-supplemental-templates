@@ -1,0 +1,30 @@
+apiVersion: template.openshift.io/v1
+kind: Template
+metadata:
+  name: sriov-network-node-policy-template
+objects:
+- apiVersion: sriovnetwork.openshift.io/v1
+  kind: SriovNetworkNodePolicy
+  metadata:
+    name: test-sriov-policy
+    namespace: openshift-sriov-network-operator
+  spec:
+    deviceType: vfio-pci
+    mtu: 9000
+    nicSelector:
+      pfNames:
+      - ${PF_NIC_NAME}
+      rootDevices:
+      - ${PF_PCI_ADDRESS}
+    nodeSelector:
+      feature.node.kubernetes.io/network-sriov.capable: 'true'
+    numVfs: 10
+    priority: 99
+    resourceName: sriov_net
+parameters:
+- description: PF NIC on the node
+  name: PF_NIC_NAME
+  value: ens2f1
+- description: PF NIC PCI address (can be retrieved using "ethtool -i <PF NIC>" on the node).
+  name: PF_PCI_ADDRESS
+  value: 0000:3b:00.1
